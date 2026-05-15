@@ -40,6 +40,7 @@ function init() {
     renderCalendar();
     renderTodos();
     updateStreakDisplay();
+    updateAIMessage(); // 初期メッセージの設定
 }
 
 // 日付変更時の日課タスクリセット
@@ -86,17 +87,14 @@ function renderCalendar() {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const lastDayOfPrevMonth = new Date(year, month, 0).getDate();
 
-    // 前月の日付
     for (let i = firstDayOfMonth - 1; i >= 0; i--) {
         createDayElement(lastDayOfPrevMonth - i, true);
     }
 
-    // 今月の日付
     for (let i = 1; i <= daysInMonth; i++) {
         createDayElement(i, false);
     }
 
-    // 次月の日付（6行分埋める）
     const totalDaysShown = firstDayOfMonth + daysInMonth;
     const remainingDays = 42 - totalDaysShown;
     for (let i = 1; i <= remainingDays; i++) {
@@ -118,9 +116,9 @@ function createDayElement(day, isOtherMonth) {
     if (dateStr === todayStr) dayDiv.classList.add('today');
     if (dateStr === selectedDate) dayDiv.classList.add('selected');
 
-    // 完了ドットの表示（その日に完了したタスク、またはその日に有効な日課があるか）
     const hasCompleted = todos.some(t => {
         const taskDate = t.createdAt.split('T')[0];
+        // 今日なら今の完了状況、過去ならその日のログ（簡易的に作成日で判定）
         return (t.completed && taskDate === dateStr) || (t.type === 'daily' && t.completed && todayStr === dateStr);
     });
 
@@ -137,6 +135,7 @@ function createDayElement(day, isOtherMonth) {
         selectedDate = dateStr;
         renderCalendar();
         renderTodos();
+        updateAIMessage();
     });
 
     calendarDays.appendChild(dayDiv);
@@ -179,6 +178,33 @@ function updateStreakDisplay() {
     streakCount.textContent = streak.count;
 }
 
+// AIメッセージの更新
+function updateAIMessage(isTaskCompleted = false) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // 今日以外の表示
+    if (selectedDate !== todayStr) {
+        const dateObj = new Date(selectedDate);
+        const formattedDate = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
+        aiMessage.textContent = `${formattedDate}の予定を確認しています。`;
+        return;
+    }
+
+    // 今日のタスク状況
+    const remainingTasks = todos.filter(t => !t.completed).length;
+    
+    if (isTaskCompleted) {
+        // タスク完了時の特別な褒め言葉
+        showPraise();
+    } else if (remainingTasks === 0 && todos.length > 0) {
+        aiMessage.textContent = "完璧です！今日やるべきことは全て終わりました！";
+    } else if (todos.length === 0) {
+        aiMessage.textContent = "タスクを入力して、一日を始めましょう！";
+    } else {
+        aiMessage.textContent = `今日はあと${remainingTasks}件のタスクが残っています。応援しています！`;
+    }
+}
+
 function showPraise() {
     let message = "";
     if (praiseMessages.milestones[streak.count]) {
@@ -195,26 +221,25 @@ function showPraise() {
     }, 200);
 }
 
-// タスクの描画（選択された日付に基づいてフィルタリング）
+// タスクの描画
 function renderTodos() {
     todoList.innerHTML = '';
     const todayStr = new Date().toISOString().split('T')[0];
 
     const filteredTodos = todos.filter(t => {
         const taskDate = t.createdAt.split('T')[0];
-        // 選択日が今日なら、全ての日課と今日の単発を表示
-        if (selectedDate === todayStr) {
-            return t.type === 'daily' || taskDate === todayStr;
-        } else {
-            // 選択日が過去/未来なら、その日に作成されたタスクのみ（日課もその日のログとして扱う）
-            return taskDate === selectedDate;
+        
+        // 日課タスクは今日以降なら常に表示
+        if (t.type === 'daily') {
+            return selectedDate >= taskDate;
         }
+        
+        // 単発タスクはその日のみ表示
+        return taskDate === selectedDate;
     });
 
     filteredTodos.forEach((todo) => {
-        // 元の配列でのインデックスを取得
         const originalIndex = todos.indexOf(todo);
-        
         const li = document.createElement('li');
         li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
         
@@ -270,7 +295,8 @@ todoForm.addEventListener('submit', (e) => {
         });
         todoInput.value = '';
         saveAndRender();
-        renderCalendar(); // カレンダーのドット更新
+        renderCalendar();
+        updateAIMessage();
     }
 });
 
@@ -280,17 +306,20 @@ function toggleTodo(index) {
     
     if (!wasCompleted && todos[index].completed) {
         handleStreak();
-        showPraise();
+        updateAIMessage(true); // 褒め言葉モード
+    } else {
+        updateAIMessage(); // 通常のリマインドモード
     }
     
     saveAndRender();
-    renderCalendar(); // カレンダーのドット更新
+    renderCalendar();
 }
 
 function deleteTodo(index) {
     todos.splice(index, 1);
     saveAndRender();
-    renderCalendar(); // カレンダーのドット更新
+    renderCalendar();
+    updateAIMessage();
 }
 
 function saveTodos() {
