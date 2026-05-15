@@ -65,8 +65,29 @@ h1 {
 
 #todo-form {
     display: flex;
-    gap: 0.5rem;
+    flex-direction: column;
+    gap: 0.8rem;
     margin-bottom: 2rem;
+}
+
+.input-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.type-selector {
+    display: flex;
+    gap: 1.5rem;
+    padding-left: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.type-selector label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
 }
 
 #todo-input {
@@ -103,7 +124,7 @@ button:hover {
 .todo-item {
     display: flex;
     align-items: center;
-    padding: 0.8rem;
+    padding: 1rem 0.8rem;
     border-bottom: 1px solid #eee;
     transition: background 0.2s;
 }
@@ -113,15 +134,53 @@ button:hover {
 }
 
 .todo-item input[type="checkbox"] {
-    margin-right: 1rem;
+    margin-right: 0.8rem;
     width: 1.2rem;
     height: 1.2rem;
     cursor: pointer;
 }
 
-.todo-text {
+.todo-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
     cursor: pointer;
+}
+
+.todo-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.todo-text {
+    font-size: 1rem;
+}
+
+.todo-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 0.75rem;
+    color: #999;
+}
+
+.badge {
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.badge-single {
+    background-color: #e0e0e0;
+    color: #666;
+}
+
+.badge-daily {
+    background-color: #ffeaa7;
+    color: #d35400;
 }
 
 .todo-item.completed .todo-text {

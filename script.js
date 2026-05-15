@@ -29,9 +29,28 @@ const praiseMessages = {
 
 // 初期化
 function init() {
+    handleDailyReset();
     checkStreakReset();
     renderTodos();
     updateStreakDisplay();
+}
+
+// 日付変更時の日課タスクリセット
+function handleDailyReset() {
+    const today = new Date().toISOString().split('T')[0];
+    const lastAccess = localStorage.getItem('lastAccessDate');
+
+    if (lastAccess && lastAccess !== today) {
+        // 日付が変わっていたら日課タスクをリセット
+        todos = todos.map(todo => {
+            if (todo.type === 'daily') {
+                return { ...todo, completed: false };
+            }
+            return todo;
+        });
+        saveTodos();
+    }
+    localStorage.setItem('lastAccessDate', today);
 }
 
 // 起動時にストリークが途切れているか確認
@@ -43,22 +62,18 @@ function checkStreakReset() {
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    // 今日でも昨日でもない場合、ストリークは途切れている
     if (streak.lastDate !== today && streak.lastDate !== yesterdayStr) {
         streak.count = 0;
         localStorage.setItem('streak', JSON.stringify(streak));
     }
 }
 
-// ストリークの更新ロジック
+// ストリークの更新
 function handleStreak() {
     const today = new Date().toISOString().split('T')[0];
     const lastDate = streak.lastDate;
 
-    if (lastDate === today) {
-        // 今日すでに完了済みならカウントはそのまま
-        return;
-    }
+    if (lastDate === today) return;
 
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
@@ -75,7 +90,6 @@ function handleStreak() {
     updateStreakDisplay();
 }
 
-// 表示更新
 function updateStreakDisplay() {
     streakCount.textContent = streak.count;
 }
@@ -90,7 +104,6 @@ function showPraise() {
     }
     aiMessage.textContent = message;
     
-    // アニメーション効果（簡易的）
     aiMessage.style.transform = "scale(1.05)";
     setTimeout(() => {
         aiMessage.style.transform = "scale(1)";
@@ -104,17 +117,27 @@ function renderTodos() {
         const li = document.createElement('li');
         li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
         
+        const dateStr = todo.createdAt ? new Date(todo.createdAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) : '';
+        const typeLabel = todo.type === 'daily' ? '日課' : '単発';
+        const typeClass = todo.type === 'daily' ? 'badge-daily' : 'badge-single';
+
         li.innerHTML = `
             <input type="checkbox" ${todo.completed ? 'checked' : ''}>
-            <span class="todo-text">${todo.text}</span>
+            <div class="todo-content">
+                <div class="todo-header">
+                    <span class="todo-text">${todo.text}</span>
+                </div>
+                <div class="todo-meta">
+                    <span class="badge ${typeClass}">${typeLabel}</span>
+                    <span class="todo-date">${dateStr}</span>
+                </div>
+            </div>
             <button class="delete-btn">&times;</button>
         `;
 
-        // 完了イベント
         const checkbox = li.querySelector('input');
         checkbox.addEventListener('change', () => toggleTodo(index));
 
-        // 削除イベント
         const deleteBtn = li.querySelector('.delete-btn');
         deleteBtn.addEventListener('click', () => deleteTodo(index));
 
@@ -126,19 +149,24 @@ function renderTodos() {
 todoForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = todoInput.value.trim();
+    const type = document.querySelector('input[name="task-type"]:checked').value;
+    
     if (text) {
-        todos.push({ text, completed: false });
+        todos.push({ 
+            text, 
+            completed: false, 
+            type: type, 
+            createdAt: new Date().toISOString() 
+        });
         todoInput.value = '';
         saveAndRender();
     }
 });
 
-// タスク完了切り替え
 function toggleTodo(index) {
     const wasCompleted = todos[index].completed;
     todos[index].completed = !todos[index].completed;
     
-    // 未完了から完了になった時だけ褒める
     if (!wasCompleted && todos[index].completed) {
         handleStreak();
         showPraise();
@@ -147,14 +175,17 @@ function toggleTodo(index) {
     saveAndRender();
 }
 
-// タスク削除
 function deleteTodo(index) {
     todos.splice(index, 1);
     saveAndRender();
 }
 
-function saveAndRender() {
+function saveTodos() {
     localStorage.setItem('todos', JSON.stringify(todos));
+}
+
+function saveAndRender() {
+    saveTodos();
     renderTodos();
 }
 
