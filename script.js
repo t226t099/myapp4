@@ -1,6 +1,8 @@
 // 状態管理
 let todos = JSON.parse(localStorage.getItem('todos')) || [];
 let streak = JSON.parse(localStorage.getItem('streak')) || { count: 0, lastDate: null };
+let currentCalendarDate = new Date();
+let selectedDate = new Date().toISOString().split('T')[0];
 
 // DOM要素
 const todoForm = document.getElementById('todo-form');
@@ -8,6 +10,10 @@ const todoInput = document.getElementById('todo-input');
 const todoList = document.getElementById('todo-list');
 const streakCount = document.getElementById('streak-count');
 const aiMessage = document.getElementById('ai-message');
+const calendarDays = document.getElementById('calendar-days');
+const calendarMonthYear = document.getElementById('calendar-month-year');
+const prevMonthBtn = document.getElementById('prev-month');
+const nextMonthBtn = document.getElementById('next-month');
 
 // 褒め言葉リスト
 const praiseMessages = {
@@ -31,6 +37,7 @@ const praiseMessages = {
 function init() {
     handleDailyReset();
     checkStreakReset();
+    renderCalendar();
     renderTodos();
     updateStreakDisplay();
 }
@@ -41,7 +48,6 @@ function handleDailyReset() {
     const lastAccess = localStorage.getItem('lastAccessDate');
 
     if (lastAccess && lastAccess !== today) {
-        // 日付が変わっていたら日課タスクをリセット
         todos = todos.map(todo => {
             if (todo.type === 'daily') {
                 return { ...todo, completed: false };
@@ -67,6 +73,85 @@ function checkStreakReset() {
         localStorage.setItem('streak', JSON.stringify(streak));
     }
 }
+
+// カレンダーの描画
+function renderCalendar() {
+    calendarDays.innerHTML = '';
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+
+    calendarMonthYear.textContent = `${year}年${month + 1}月`;
+
+    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const lastDayOfPrevMonth = new Date(year, month, 0).getDate();
+
+    // 前月の日付
+    for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+        createDayElement(lastDayOfPrevMonth - i, true);
+    }
+
+    // 今月の日付
+    for (let i = 1; i <= daysInMonth; i++) {
+        createDayElement(i, false);
+    }
+
+    // 次月の日付（6行分埋める）
+    const totalDaysShown = firstDayOfMonth + daysInMonth;
+    const remainingDays = 42 - totalDaysShown;
+    for (let i = 1; i <= remainingDays; i++) {
+        createDayElement(i, true);
+    }
+}
+
+function createDayElement(day, isOtherMonth) {
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'calendar-day';
+    if (isOtherMonth) dayDiv.classList.add('other-month');
+
+    const date = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + (isOtherMonth ? (day > 15 ? -1 : 1) : 0), day);
+    const dateStr = date.toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    dayDiv.textContent = day;
+
+    if (dateStr === todayStr) dayDiv.classList.add('today');
+    if (dateStr === selectedDate) dayDiv.classList.add('selected');
+
+    // 完了ドットの表示（その日に完了したタスク、またはその日に有効な日課があるか）
+    const hasCompleted = todos.some(t => {
+        const taskDate = t.createdAt.split('T')[0];
+        return (t.completed && taskDate === dateStr) || (t.type === 'daily' && t.completed && todayStr === dateStr);
+    });
+
+    if (hasCompleted) {
+        const dotContainer = document.createElement('div');
+        dotContainer.className = 'dot-container';
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        dotContainer.appendChild(dot);
+        dayDiv.appendChild(dotContainer);
+    }
+
+    dayDiv.addEventListener('click', () => {
+        selectedDate = dateStr;
+        renderCalendar();
+        renderTodos();
+    });
+
+    calendarDays.appendChild(dayDiv);
+}
+
+// 月移動
+prevMonthBtn.addEventListener('click', () => {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+    renderCalendar();
+});
+
+nextMonthBtn.addEventListener('click', () => {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+    renderCalendar();
+});
 
 // ストリークの更新
 function handleStreak() {
@@ -110,10 +195,26 @@ function showPraise() {
     }, 200);
 }
 
-// タスクの描画
+// タスクの描画（選択された日付に基づいてフィルタリング）
 function renderTodos() {
     todoList.innerHTML = '';
-    todos.forEach((todo, index) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const filteredTodos = todos.filter(t => {
+        const taskDate = t.createdAt.split('T')[0];
+        // 選択日が今日なら、全ての日課と今日の単発を表示
+        if (selectedDate === todayStr) {
+            return t.type === 'daily' || taskDate === todayStr;
+        } else {
+            // 選択日が過去/未来なら、その日に作成されたタスクのみ（日課もその日のログとして扱う）
+            return taskDate === selectedDate;
+        }
+    });
+
+    filteredTodos.forEach((todo) => {
+        // 元の配列でのインデックスを取得
+        const originalIndex = todos.indexOf(todo);
+        
         const li = document.createElement('li');
         li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
         
@@ -136,13 +237,22 @@ function renderTodos() {
         `;
 
         const checkbox = li.querySelector('input');
-        checkbox.addEventListener('change', () => toggleTodo(index));
+        checkbox.addEventListener('change', () => toggleTodo(originalIndex));
 
         const deleteBtn = li.querySelector('.delete-btn');
-        deleteBtn.addEventListener('click', () => deleteTodo(index));
+        deleteBtn.addEventListener('click', () => deleteTodo(originalIndex));
 
         todoList.appendChild(li);
     });
+
+    if (filteredTodos.length === 0) {
+        const emptyMsg = document.createElement('li');
+        emptyMsg.style.textAlign = 'center';
+        emptyMsg.style.padding = '2rem';
+        emptyMsg.style.color = '#999';
+        emptyMsg.textContent = 'この日のタスクはありません';
+        todoList.appendChild(emptyMsg);
+    }
 }
 
 // タスク追加
@@ -160,6 +270,7 @@ todoForm.addEventListener('submit', (e) => {
         });
         todoInput.value = '';
         saveAndRender();
+        renderCalendar(); // カレンダーのドット更新
     }
 });
 
@@ -173,11 +284,13 @@ function toggleTodo(index) {
     }
     
     saveAndRender();
+    renderCalendar(); // カレンダーのドット更新
 }
 
 function deleteTodo(index) {
     todos.splice(index, 1);
     saveAndRender();
+    renderCalendar(); // カレンダーのドット更新
 }
 
 function saveTodos() {

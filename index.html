@@ -20,6 +20,20 @@
                 タスクを入力して、一日を始めましょう！
             </div>
 
+            <section id="calendar-section" class="calendar-section">
+                <div class="calendar-header">
+                    <button id="prev-month">&lt;</button>
+                    <h2 id="calendar-month-year">2026年5月</h2>
+                    <button id="next-month">&gt;</button>
+                </div>
+                <div class="calendar-weekdays">
+                    <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+                </div>
+                <div id="calendar-days" class="calendar-days">
+                    <!-- 日付がJavaScriptで生成されます -->
+                </div>
+            </section>
+
             <form id="todo-form">
                 <div class="input-group">
                     <input type="text" id="todo-input" placeholder="新しいタスクを入力..." required>
