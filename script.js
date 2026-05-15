@@ -7,6 +7,7 @@ let selectedDate = new Date().toISOString().split('T')[0];
 // DOM要素
 const todoForm = document.getElementById('todo-form');
 const todoInput = document.getElementById('todo-input');
+const todoPriority = document.getElementById('todo-priority');
 const todoList = document.getElementById('todo-list');
 const streakCount = document.getElementById('streak-count');
 const aiMessage = document.getElementById('ai-message');
@@ -14,6 +15,9 @@ const calendarDays = document.getElementById('calendar-days');
 const calendarMonthYear = document.getElementById('calendar-month-year');
 const prevMonthBtn = document.getElementById('prev-month');
 const nextMonthBtn = document.getElementById('next-month');
+const progressBarFill = document.getElementById('progress-bar-fill');
+const progressPercent = document.getElementById('progress-percent');
+const clearCompletedBtn = document.getElementById('clear-completed');
 
 // 褒め言葉リスト
 const praiseMessages = {
@@ -40,7 +44,8 @@ function init() {
     renderCalendar();
     renderTodos();
     updateStreakDisplay();
-    updateAIMessage(); // 初期メッセージの設定
+    updateAIMessage();
+    updateProgress();
 }
 
 // 日付変更時の日課タスクリセット
@@ -118,7 +123,6 @@ function createDayElement(day, isOtherMonth) {
 
     const hasCompleted = todos.some(t => {
         const taskDate = t.createdAt.split('T')[0];
-        // 今日なら今の完了状況、過去ならその日のログ（簡易的に作成日で判定）
         return (t.completed && taskDate === dateStr) || (t.type === 'daily' && t.completed && todayStr === dateStr);
     });
 
@@ -136,6 +140,7 @@ function createDayElement(day, isOtherMonth) {
         renderCalendar();
         renderTodos();
         updateAIMessage();
+        updateProgress();
     });
 
     calendarDays.appendChild(dayDiv);
@@ -178,20 +183,43 @@ function updateStreakDisplay() {
     streakCount.textContent = streak.count;
 }
 
+// 進捗の更新
+function updateProgress() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const currentDisplayTodos = todos.filter(t => {
+        const taskDate = t.createdAt.split('T')[0];
+        if (t.type === 'daily') return selectedDate >= taskDate;
+        return taskDate === selectedDate;
+    });
+
+    if (currentDisplayTodos.length === 0) {
+        progressBarFill.style.width = '0%';
+        progressPercent.textContent = '0%';
+        return;
+    }
+
+    const completedCount = currentDisplayTodos.filter(t => t.completed).length;
+    const percent = Math.round((completedCount / currentDisplayTodos.length) * 100);
+    
+    progressBarFill.style.width = `${percent}%`;
+    progressPercent.textContent = `${percent}%`;
+
+    // 100%達成時のAIメッセージ（今日の場合のみ）
+    if (percent === 100 && selectedDate === todayStr && completedCount > 0) {
+        aiMessage.textContent = "おめでとうございます！全てのタスクを達成しました！最高の一日ですね！";
+    }
+}
+
 // AIメッセージの更新
 function updateAIMessage(isTaskCompleted = false) {
     const todayStr = new Date().toISOString().split('T')[0];
     
-    // 今日の表示用フィルタリング
     const currentDisplayTodos = todos.filter(t => {
         const taskDate = t.createdAt.split('T')[0];
-        if (t.type === 'daily') {
-            return selectedDate >= taskDate;
-        }
+        if (t.type === 'daily') return selectedDate >= taskDate;
         return taskDate === selectedDate;
     });
 
-    // 今日以外の表示
     if (selectedDate !== todayStr) {
         const dateObj = new Date(selectedDate);
         const formattedDate = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
@@ -199,11 +227,9 @@ function updateAIMessage(isTaskCompleted = false) {
         return;
     }
 
-    // 今日のタスク状況
     const remainingTasks = currentDisplayTodos.filter(t => !t.completed).length;
     
     if (isTaskCompleted) {
-        // タスク完了時の特別な褒め言葉
         showPraise();
     } else if (remainingTasks === 0 && currentDisplayTodos.length > 0) {
         aiMessage.textContent = "完璧です！今日やるべきことは全て終わりました！";
@@ -237,15 +263,13 @@ function renderTodos() {
 
     const filteredTodos = todos.filter(t => {
         const taskDate = t.createdAt.split('T')[0];
-        
-        // 日課タスクは今日以降なら常に表示
-        if (t.type === 'daily') {
-            return selectedDate >= taskDate;
-        }
-        
-        // 単発タスクはその日のみ表示
+        if (t.type === 'daily') return selectedDate >= taskDate;
         return taskDate === selectedDate;
     });
+
+    // 優先度順にソート（高 > 中 > 低）
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    filteredTodos.sort((a, b) => priorityOrder[a.priority || 'medium'] - priorityOrder[b.priority || 'medium']);
 
     filteredTodos.forEach((todo) => {
         const originalIndex = todos.indexOf(todo);
@@ -255,8 +279,10 @@ function renderTodos() {
         const dateStr = todo.createdAt ? new Date(todo.createdAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) : '';
         const typeLabel = todo.type === 'daily' ? '日課' : '単発';
         const typeClass = todo.type === 'daily' ? 'badge-daily' : 'badge-single';
+        const priorityClass = `priority-${todo.priority || 'medium'}`;
 
         li.innerHTML = `
+            <div class="priority-badge ${priorityClass}"></div>
             <input type="checkbox" ${todo.completed ? 'checked' : ''}>
             <div class="todo-content">
                 <div class="todo-header">
@@ -294,18 +320,21 @@ todoForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = todoInput.value.trim();
     const type = document.querySelector('input[name="task-type"]:checked').value;
+    const priority = todoPriority.value;
     
     if (text) {
         todos.push({ 
             text, 
             completed: false, 
             type: type, 
+            priority: priority,
             createdAt: new Date().toISOString() 
         });
         todoInput.value = '';
         saveAndRender();
         renderCalendar();
         updateAIMessage();
+        updateProgress();
     }
 });
 
@@ -315,13 +344,14 @@ function toggleTodo(index) {
     
     if (!wasCompleted && todos[index].completed) {
         handleStreak();
-        updateAIMessage(true); // 褒め言葉モード
+        updateAIMessage(true);
     } else {
-        updateAIMessage(); // 通常のリマインドモード
+        updateAIMessage();
     }
     
     saveAndRender();
     renderCalendar();
+    updateProgress();
 }
 
 function deleteTodo(index) {
@@ -329,7 +359,30 @@ function deleteTodo(index) {
     saveAndRender();
     renderCalendar();
     updateAIMessage();
+    updateProgress();
 }
+
+// 完了済みを一括削除
+clearCompletedBtn.addEventListener('click', () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // 表示されている完了済みタスクを削除対象にする
+    const toDelete = todos.filter(t => {
+        const taskDate = t.createdAt.split('T')[0];
+        const isShown = (t.type === 'daily' && selectedDate >= taskDate) || (taskDate === selectedDate);
+        return isShown && t.completed;
+    });
+
+    if (toDelete.length === 0) return;
+
+    if (confirm(`${toDelete.length}件の完了済みタスクを削除しますか？`)) {
+        todos = todos.filter(t => !toDelete.includes(t));
+        saveAndRender();
+        renderCalendar();
+        updateAIMessage();
+        updateProgress();
+    }
+});
 
 function saveTodos() {
     localStorage.setItem('todos', JSON.stringify(todos));

@@ -20,6 +20,16 @@
                 タスクを入力して、一日を始めましょう！
             </div>
 
+            <div id="progress-container" class="progress-container">
+                <div class="progress-info">
+                    <span>今日の進捗</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                </div>
+            </div>
+
             <section id="calendar-section" class="calendar-section">
                 <div class="calendar-header">
                     <button id="prev-month">&lt;</button>
@@ -39,15 +49,30 @@
                     <input type="text" id="todo-input" placeholder="新しいタスクを入力..." required>
                     <button type="submit">追加</button>
                 </div>
-                <div class="type-selector">
-                    <label>
-                        <input type="radio" name="task-type" value="single" checked> 単発
-                    </label>
-                    <label>
-                        <input type="radio" name="task-type" value="daily"> 日課
-                    </label>
+                <div class="form-options">
+                    <div class="type-selector">
+                        <label>
+                            <input type="radio" name="task-type" value="single" checked> 単発
+                        </label>
+                        <label>
+                            <input type="radio" name="task-type" value="daily"> 日課
+                        </label>
+                    </div>
+                    <div class="priority-selector">
+                        優先度:
+                        <select id="todo-priority">
+                            <option value="low">低</option>
+                            <option value="medium" selected>中</option>
+                            <option value="high">高</option>
+                        </select>
+                    </div>
                 </div>
             </form>
+
+            <div class="list-header">
+                <h3>タスクリスト</h3>
+                <button id="clear-completed" class="text-btn">完了済みを削除</button>
+            </div>
 
             <ul id="todo-list">
                 <!-- タスクがここに追加されます -->
