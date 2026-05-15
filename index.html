@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Praise ToDo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI Praise ToDo</h1>
+            <div id="streak-container" class="streak-container">
+                継続日数: <span id="streak-count">0</span>日連続！
+            </div>
+        </header>
+
+        <main>
+            <div id="ai-message" class="ai-message">
+                タスクを入力して、一日を始めましょう！
+            </div>
+
+            <form id="todo-form">
+                <input type="text" id="todo-input" placeholder="新しいタスクを入力..." required>
+                <button type="submit">追加</button>
+            </form>
+
+            <ul id="todo-list">
+                <!-- タスクがここに追加されます -->
+            </ul>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
