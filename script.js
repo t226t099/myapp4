@@ -182,6 +182,15 @@ function updateStreakDisplay() {
 function updateAIMessage(isTaskCompleted = false) {
     const todayStr = new Date().toISOString().split('T')[0];
     
+    // 今日の表示用フィルタリング
+    const currentDisplayTodos = todos.filter(t => {
+        const taskDate = t.createdAt.split('T')[0];
+        if (t.type === 'daily') {
+            return selectedDate >= taskDate;
+        }
+        return taskDate === selectedDate;
+    });
+
     // 今日以外の表示
     if (selectedDate !== todayStr) {
         const dateObj = new Date(selectedDate);
@@ -191,14 +200,14 @@ function updateAIMessage(isTaskCompleted = false) {
     }
 
     // 今日のタスク状況
-    const remainingTasks = todos.filter(t => !t.completed).length;
+    const remainingTasks = currentDisplayTodos.filter(t => !t.completed).length;
     
     if (isTaskCompleted) {
         // タスク完了時の特別な褒め言葉
         showPraise();
-    } else if (remainingTasks === 0 && todos.length > 0) {
+    } else if (remainingTasks === 0 && currentDisplayTodos.length > 0) {
         aiMessage.textContent = "完璧です！今日やるべきことは全て終わりました！";
-    } else if (todos.length === 0) {
+    } else if (currentDisplayTodos.length === 0) {
         aiMessage.textContent = "タスクを入力して、一日を始めましょう！";
     } else {
         aiMessage.textContent = `今日はあと${remainingTasks}件のタスクが残っています。応援しています！`;
