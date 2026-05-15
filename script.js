@@ -26,7 +26,7 @@ const praiseMessages = {
         "着実に進んでいますね。自分を褒めてあげてください！",
         "ナイス！タスクが一つ片付きました。",
         "完璧です。あなたの集中力、尊敬します。",
-        "一歩ずつ、確実に目標に近づいていますよ。"
+        "一歩ずつ, 確実に目標に近づいていますよ。"
     ],
     milestones: {
         1: "まずは一歩、素晴らしいスタートです！今日から新しい習慣が始まります。",
@@ -48,14 +48,14 @@ function init() {
     updateProgress();
 }
 
-// 日付変更時の日課タスクリセット
+// 日付変更時の日課・週課タスクリセット
 function handleDailyReset() {
     const today = new Date().toISOString().split('T')[0];
     const lastAccess = localStorage.getItem('lastAccessDate');
 
     if (lastAccess && lastAccess !== today) {
         todos = todos.map(todo => {
-            if (todo.type === 'daily') {
+            if (todo.type === 'daily' || todo.type === 'weekly') {
                 return { ...todo, completed: false };
             }
             return todo;
@@ -123,7 +123,15 @@ function createDayElement(day, isOtherMonth) {
 
     const hasCompleted = todos.some(t => {
         const taskDate = t.createdAt.split('T')[0];
-        return (t.completed && taskDate === dateStr) || (t.type === 'daily' && t.completed && todayStr === dateStr);
+        const taskDayOfWeek = t.dayOfWeek;
+        const currentDayOfWeek = date.getDay();
+
+        if (t.completed) {
+            if (t.type === 'daily') return todayStr === dateStr;
+            if (t.type === 'weekly') return taskDayOfWeek === currentDayOfWeek && todayStr === dateStr;
+            return taskDate === dateStr;
+        }
+        return false;
     });
 
     if (hasCompleted) {
@@ -186,9 +194,12 @@ function updateStreakDisplay() {
 // 進捗の更新
 function updateProgress() {
     const todayStr = new Date().toISOString().split('T')[0];
+    const currentDayOfWeek = new Date(selectedDate).getDay();
+
     const currentDisplayTodos = todos.filter(t => {
         const taskDate = t.createdAt.split('T')[0];
         if (t.type === 'daily') return selectedDate >= taskDate;
+        if (t.type === 'weekly') return selectedDate >= taskDate && t.dayOfWeek === currentDayOfWeek;
         return taskDate === selectedDate;
     });
 
@@ -204,7 +215,6 @@ function updateProgress() {
     progressBarFill.style.width = `${percent}%`;
     progressPercent.textContent = `${percent}%`;
 
-    // 100%達成時のAIメッセージ（今日の場合のみ）
     if (percent === 100 && selectedDate === todayStr && completedCount > 0) {
         aiMessage.textContent = "おめでとうございます！全てのタスクを達成しました！最高の一日ですね！";
     }
@@ -213,10 +223,12 @@ function updateProgress() {
 // AIメッセージの更新
 function updateAIMessage(isTaskCompleted = false) {
     const todayStr = new Date().toISOString().split('T')[0];
+    const currentDayOfWeek = new Date(selectedDate).getDay();
     
     const currentDisplayTodos = todos.filter(t => {
         const taskDate = t.createdAt.split('T')[0];
         if (t.type === 'daily') return selectedDate >= taskDate;
+        if (t.type === 'weekly') return selectedDate >= taskDate && t.dayOfWeek === currentDayOfWeek;
         return taskDate === selectedDate;
     });
 
@@ -259,15 +271,15 @@ function showPraise() {
 // タスクの描画
 function renderTodos() {
     todoList.innerHTML = '';
-    const todayStr = new Date().toISOString().split('T')[0];
+    const currentDayOfWeek = new Date(selectedDate).getDay();
 
     const filteredTodos = todos.filter(t => {
         const taskDate = t.createdAt.split('T')[0];
         if (t.type === 'daily') return selectedDate >= taskDate;
+        if (t.type === 'weekly') return selectedDate >= taskDate && t.dayOfWeek === currentDayOfWeek;
         return taskDate === selectedDate;
     });
 
-    // 優先度順にソート（高 > 中 > 低）
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     filteredTodos.sort((a, b) => priorityOrder[a.priority || 'medium'] - priorityOrder[b.priority || 'medium']);
 
@@ -277,8 +289,8 @@ function renderTodos() {
         li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
         
         const dateStr = todo.createdAt ? new Date(todo.createdAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) : '';
-        const typeLabel = todo.type === 'daily' ? '日課' : '単発';
-        const typeClass = todo.type === 'daily' ? 'badge-daily' : 'badge-single';
+        const typeLabel = todo.type === 'daily' ? '日課' : (todo.type === 'weekly' ? '週課' : '単発');
+        const typeClass = `badge-${todo.type}`;
         const priorityClass = `priority-${todo.priority || 'medium'}`;
 
         li.innerHTML = `
@@ -321,6 +333,7 @@ todoForm.addEventListener('submit', (e) => {
     const text = todoInput.value.trim();
     const type = document.querySelector('input[name="task-type"]:checked').value;
     const priority = todoPriority.value;
+    const now = new Date();
     
     if (text) {
         todos.push({ 
@@ -328,7 +341,8 @@ todoForm.addEventListener('submit', (e) => {
             completed: false, 
             type: type, 
             priority: priority,
-            createdAt: new Date().toISOString() 
+            createdAt: now.toISOString(),
+            dayOfWeek: now.getDay() // 週課用の曜日（0:日 〜 6:土）
         });
         todoInput.value = '';
         saveAndRender();
@@ -364,12 +378,13 @@ function deleteTodo(index) {
 
 // 完了済みを一括削除
 clearCompletedBtn.addEventListener('click', () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const currentDayOfWeek = new Date(selectedDate).getDay();
     
-    // 表示されている完了済みタスクを削除対象にする
     const toDelete = todos.filter(t => {
         const taskDate = t.createdAt.split('T')[0];
-        const isShown = (t.type === 'daily' && selectedDate >= taskDate) || (taskDate === selectedDate);
+        const isShown = (t.type === 'daily' && selectedDate >= taskDate) || 
+                        (t.type === 'weekly' && selectedDate >= taskDate && t.dayOfWeek === currentDayOfWeek) ||
+                        (taskDate === selectedDate);
         return isShown && t.completed;
     });
 

@@ -278,6 +278,11 @@ button:hover {
     color: #d35400;
 }
 
+.badge-weekly {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
 .todo-item.completed .todo-text {
     text-decoration: line-through;
     color: #888;
