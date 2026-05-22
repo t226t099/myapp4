@@ -4,84 +4,1062 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Praise ToDo</title>
-    <link rel="stylesheet" href="style.css">
+    <!-- Tailwind CSS (for base utilities & responsive structure) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@300;400;500&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* 季節ごとのテーマ変数の定義 */
+        :root {
+            /* デフォルト（春） */
+            --bg-gradient: linear-gradient(135deg, #fff5f5 0%, #fed7d7 50%, #ebf8ff 100%);
+            --panel-bg: rgba(255, 255, 255, 0.85);
+            --primary-color: #f687b3;
+            --primary-dark: #d53f8c;
+            --accent-color: #4fd1c5;
+            --text-main: #2d3748;
+            --text-muted: #718096;
+            --calendar-active-bg: #fbb6ce;
+            --season-icon: "🌸";
+            --season-name: "春";
+        }
+
+        /* 夏テーマ (6, 7, 8月) */
+        .theme-summer {
+            --bg-gradient: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 40%, #feebc8 100%);
+            --panel-bg: rgba(255, 255, 255, 0.88);
+            --primary-color: #319795;
+            --primary-dark: #234e52;
+            --accent-color: #ecc94b;
+            --text-main: #1a202c;
+            --text-muted: #4a5568;
+            --calendar-active-bg: #81e6d9;
+            --season-icon: "🌻";
+            --season-name: "夏";
+        }
+
+        /* 秋テーマ (9, 10, 11月) */
+        .theme-autumn {
+            --bg-gradient: linear-gradient(135deg, #fffaf0 0%, #feebc8 50%, #fbd38d 100%);
+            --panel-bg: rgba(255, 255, 255, 0.88);
+            --primary-color: #dd6b20;
+            --primary-dark: #7b341e;
+            --accent-color: #ed8936;
+            --text-main: #2c5282;
+            --text-muted: #718096;
+            --calendar-active-bg: #fbd38d;
+            --season-icon: "🍁";
+            --season-name: "秋";
+        }
+
+        /* 冬テーマ (12, 1, 2月) */
+        .theme-winter {
+            --bg-gradient: linear-gradient(135deg, #ebf8ff 0%, #bee3f8 50%, #edf2f7 100%);
+            --panel-bg: rgba(255, 255, 255, 0.88);
+            --primary-color: #3182ce;
+            --primary-dark: #1a365d;
+            --accent-color: #a0aec0;
+            --text-main: #2d3748;
+            --text-muted: #718096;
+            --calendar-active-bg: #90cdf4;
+            --season-icon: "❄️";
+            --season-name: "冬";
+        }
+
+        body {
+            font-family: 'Zen Maru Gothic', 'Kiwi Maru', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            transition: background 0.8s ease, color 0.5s ease;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            transition: all 0.5s ease;
+        }
+
+        /* カレンダーデザインの調整（壁掛け風） */
+        .calendar-container {
+            border-top: 15px solid var(--primary-color);
+            border-radius: 12px;
+            position: relative;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+            background: #ffffff;
+            transition: border-color 0.5s ease;
+        }
+
+        .calendar-container::before, .calendar-container::after {
+            content: '';
+            position: absolute;
+            top: -22px;
+            width: 14px;
+            height: 14px;
+            background: #4a5568;
+            border-radius: 50%;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .calendar-container::before { left: 20%; }
+        .calendar-container::after { right: 20%; }
+
+        .calendar-ring-left, .calendar-ring-right {
+            position: absolute;
+            top: -30px;
+            width: 8px;
+            height: 25px;
+            background: #cbd5e0;
+            border-radius: 4px;
+            z-index: 10;
+            box-shadow: 1px 2px 3px rgba(0,0,0,0.15);
+        }
+        .calendar-ring-left { left: calc(20% + 3px); }
+        .calendar-ring-right { right: calc(20% + 3px); }
+
+        .calendar-day-cell {
+            aspect-ratio: 1 / 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .calendar-day-cell:hover:not(.empty-day) {
+            background-color: rgba(247, 250, 252, 0.85);
+            transform: scale(1.05);
+        }
+
+        .calendar-day-cell.today {
+            outline: 2px solid var(--primary-color);
+            font-weight: bold;
+        }
+
+        .stamp-complete {
+            background-image: radial-gradient(circle, rgba(246, 135, 179, 0.15) 0%, rgba(246, 135, 179, 0) 70%);
+            position: relative;
+        }
+        
+        .stamp-complete::after {
+            content: '済';
+            font-size: 10px;
+            font-weight: bold;
+            color: #e53e3e;
+            border: 1.5px solid #e53e3e;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-15deg);
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+            animation: stampAnim 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes stampAnim {
+            0% { transform: scale(3) rotate(-45deg); opacity: 0; }
+            100% { transform: scale(1) rotate(-15deg); opacity: 1; }
+        }
+
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 10px;
+            opacity: 0.5;
+        }
+
+        /* 季節の背景イラストをあしらうデコレーション */
+        .season-deco {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.12;
+            font-size: 8rem;
+            z-index: 0;
+            user-select: none;
+        }
+
+        /* きれいな進捗バーのアニメーション */
+        .progress-bar-fill {
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(90deg, var(--accent-color) 0%, var(--primary-color) 100%);
+        }
+
+        /* タスク完了のアニメーション */
+        .task-checked {
+            text-decoration: line-through;
+            opacity: 0.6;
+            transform: translateX(5px);
+            transition: all 0.3s ease;
+        }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1>AI Praise ToDo</h1>
-            <div id="streak-container" class="streak-container">
-                継続日数: <span id="streak-count">0</span>日連続！
+<body class="p-4 md:p-8 flex flex-col items-center relative overflow-x-hidden min-h-screen">
+
+    <!-- 季節のデコレーション用スタンプ背景 -->
+    <div id="deco-left" class="season-deco left-4 top-12 md:left-12 md:top-24 select-none">🌸</div>
+    <div id="deco-right" class="season-deco right-4 bottom-12 md:right-12 md:bottom-24 select-none">🌿</div>
+
+    <div class="w-full max-w-4xl z-10">
+        
+        <!-- ヘッダー -->
+        <header class="text-center mb-6 relative">
+            <div class="inline-block bg-white/40 px-4 py-1.5 rounded-full text-xs font-semibold mb-2 tracking-wider shadow-sm border border-white/40">
+                <span id="current-season-indicator">🌸 春のきざしテーマ</span>
+            </div>
+            <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight drop-shadow-sm flex items-center justify-center gap-2">
+                <span id="header-icon">🌸</span> AI Praise ToDo <span id="header-icon-2">🌸</span>
+            </h1>
+            <p class="text-xs md:text-sm mt-1 opacity-75">カレンダーを埋めて、AIにたくさん褒めてもらおう！</p>
+            
+            <!-- 継続日数（ストリーク） -->
+            <div id="streak-container" class="mt-3 inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-1.5 rounded-full shadow-md hover:scale-105 transition-transform cursor-default">
+                <span class="text-lg">🔥</span>
+                <span class="font-bold text-sm md:text-base">継続日数: <span id="streak-count" class="text-xl px-1 font-black">0</span>日連続！</span>
             </div>
         </header>
 
-        <main>
-            <div id="ai-message" class="ai-message">
-                タスクを入力して、一日を始めましょう！
-            </div>
-
-            <div id="progress-container" class="progress-container">
-                <div class="progress-info">
-                    <span>今日の進捗</span>
-                    <span id="progress-percent">0%</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div id="progress-bar-fill" class="progress-bar-fill"></div>
-                </div>
-            </div>
-
-            <section id="calendar-section" class="calendar-section">
-                <div class="calendar-header">
-                    <button id="prev-month">&lt;</button>
-                    <h2 id="calendar-month-year">2026年5月</h2>
-                    <button id="next-month">&gt;</button>
-                </div>
-                <div class="calendar-weekdays">
-                    <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
-                </div>
-                <div id="calendar-days" class="calendar-days">
-                    <!-- 日付がJavaScriptで生成されます -->
-                </div>
-            </section>
-
-            <form id="todo-form">
-                <div class="input-group">
-                    <input type="text" id="todo-input" placeholder="新しいタスクを入力..." required>
-                    <button type="submit">追加</button>
-                </div>
-                <div class="form-options">
-                    <div class="type-selector">
-                        <label>
-                            <input type="radio" name="task-type" value="single" checked> 単発
-                        </label>
-                        <label>
-                            <input type="radio" name="task-type" value="daily"> 日課
-                        </label>
-                        <label>
-                            <input type="radio" name="task-type" value="weekly"> 週課
-                        </label>
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- 左側カラム: メッセージ・進捗・ToDoリスト -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                
+                <!-- AIメッセージエリア -->
+                <div class="glass-panel rounded-2xl p-5 relative overflow-hidden flex flex-col gap-3 min-h-[120px] justify-center shadow-md">
+                    <div class="absolute top-2 left-3 text-[10px] uppercase font-bold tracking-widest text-slate-400 flex items-center gap-1">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        AI Companion
                     </div>
-                    <div class="priority-selector">
-                        優先度:
-                        <select id="todo-priority">
-                            <option value="low">低</option>
-                            <option value="medium" selected>中</option>
-                            <option value="high">高</option>
-                        </select>
+                    <!-- ロボット風アバター -->
+                    <div class="flex items-start gap-4 mt-2">
+                        <div class="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center text-2xl shadow-inner bg-white/60" id="ai-avatar">
+                            🤖
+                        </div>
+                        <div class="flex-1">
+                            <p id="ai-message" class="text-sm md:text-base font-medium leading-relaxed">
+                                今日も素敵な一日が始まりますね！まずは今日やりたいタスクをリストに書き出してみましょう。どんな小さなことでも、私はあなたを全力で応援します！✨
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </form>
 
-            <div class="list-header">
-                <h3>タスクリスト</h3>
-                <button id="clear-completed" class="text-btn">完了済みを削除</button>
+                <!-- 今日の進捗 -->
+                <div class="glass-panel rounded-2xl p-5 shadow-sm">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-bold flex items-center gap-1">
+                            <span class="text-lg">📈</span> 今日の進捗
+                        </span>
+                        <span id="progress-percent" class="text-lg font-extrabold text-pink-600">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200/60 rounded-full h-4 overflow-hidden p-0.5 shadow-inner">
+                        <div id="progress-bar-fill" class="progress-bar-fill h-full rounded-full w-0"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-500 mt-1.5">
+                        <span id="task-completed-fraction">0 / 0 タスク完了</span>
+                        <span>100%でカレンダーに「済」スタンプ！</span>
+                    </div>
+                </div>
+
+                <!-- タスク入力フォーム -->
+                <div class="glass-panel rounded-2xl p-5 shadow-sm">
+                    <h3 class="text-sm font-bold mb-3 flex items-center gap-1.5">
+                        <span>📝</span> 新しいタスクを追加
+                    </h3>
+                    <form id="todo-form" class="space-y-3">
+                        <div class="flex gap-2">
+                            <input type="text" id="todo-input" 
+                                class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white/90 text-sm" 
+                                placeholder="例：毎日10分ストレッチする、読書、買い物など..." required>
+                            <button type="submit" 
+                                class="px-5 py-2.5 rounded-xl text-white font-bold text-sm shadow-md transition-all duration-300 hover:brightness-105 active:scale-95 flex items-center justify-center gap-1"
+                                style="background-color: var(--primary-color);">
+                                <span>追加</span>
+                            </button>
+                        </div>
+                        
+                        <div class="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
+                            <!-- タスク種別 -->
+                            <div class="flex items-center gap-2 bg-white/40 p-1.5 rounded-lg border border-white/50">
+                                <span class="font-bold text-slate-500">分類:</span>
+                                <div class="flex gap-2">
+                                    <label class="flex items-center gap-1 cursor-pointer hover:opacity-80">
+                                        <input type="radio" name="task-type" value="single" checked class="accent-pink-500">
+                                        <span>単発</span>
+                                    </label>
+                                    <label class="flex items-center gap-1 cursor-pointer hover:opacity-80">
+                                        <input type="radio" name="task-type" value="daily" class="accent-pink-500">
+                                        <span>日課</span>
+                                    </label>
+                                    <label class="flex items-center gap-1 cursor-pointer hover:opacity-80">
+                                        <input type="radio" name="task-type" value="weekly" class="accent-pink-500">
+                                        <span>週課</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 優先度 -->
+                            <div class="flex items-center gap-1 bg-white/40 p-1.5 rounded-lg border border-white/50">
+                                <span class="font-bold text-slate-500">優先度:</span>
+                                <select id="todo-priority" class="bg-transparent focus:outline-none cursor-pointer font-semibold text-slate-700">
+                                    <option value="low">低 🟢</option>
+                                    <option value="medium" selected>中 🟡</option>
+                                    <option value="high">高 🔴</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- タスクリスト -->
+                <div class="glass-panel rounded-2xl p-5 shadow-sm flex-1 flex flex-col min-h-[300px]">
+                    <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
+                        <h3 class="font-bold flex items-center gap-2">
+                            <span>📋</span> タスクリスト
+                        </h3>
+                        <button id="clear-completed" class="text-xs text-red-500 hover:text-red-700 font-semibold transition-colors bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg">
+                            完了済みを削除
+                        </button>
+                    </div>
+
+                    <!-- フィルタータブ -->
+                    <div class="flex gap-1.5 mb-3 text-xs">
+                        <button class="filter-tab active px-3 py-1 rounded-full bg-white/80 font-bold border border-pink-200" data-filter="all">すべて</button>
+                        <button class="filter-tab px-3 py-1 rounded-full bg-white/20 font-medium hover:bg-white/50" data-filter="single">単発</button>
+                        <button class="filter-tab px-3 py-1 rounded-full bg-white/20 font-medium hover:bg-white/50" data-filter="daily">日課</button>
+                        <button class="filter-tab px-3 py-1 rounded-full bg-white/20 font-medium hover:bg-white/50" data-filter="weekly">週課</button>
+                    </div>
+
+                    <!-- リスト中身 -->
+                    <ul id="todo-list" class="space-y-2.5 max-h-[350px] overflow-y-auto pr-1 flex-1">
+                        <!-- JavaScriptで動的生成 -->
+                    </ul>
+                    
+                    <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-slate-400 gap-2">
+                        <span class="text-4xl">🌟</span>
+                        <p class="text-sm font-semibold">現在タスクはありません</p>
+                        <p class="text-xs">新しいタスクを追加してみましょう！</p>
+                    </div>
+                </div>
+
             </div>
 
-            <ul id="todo-list">
-                <!-- タスクがここに追加されます -->
-            </ul>
+            <!-- 右側カラム: 本物のカレンダー（壁掛け風デザイン） -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                
+                <!-- カレンダー -->
+                <section id="calendar-section" class="calendar-container glass-panel p-5">
+                    <!-- カレンダーを吊るすリング -->
+                    <div class="calendar-ring-left"></div>
+                    <div class="calendar-ring-right"></div>
+
+                    <!-- カレンダーヘッダー -->
+                    <div class="calendar-header flex justify-between items-center mb-6 pt-3">
+                        <button id="prev-month" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-200 bg-white font-bold text-lg select-none">&lt;</button>
+                        <h2 id="calendar-month-year" class="text-xl md:text-2xl font-black tracking-wider text-slate-800 flex items-center gap-1.5">
+                            2026年5月
+                        </h2>
+                        <button id="next-month" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-200 bg-white font-bold text-lg select-none">&gt;</button>
+                    </div>
+
+                    <!-- 曜日ヘッダー -->
+                    <div class="calendar-weekdays grid grid-cols-7 gap-1 text-center font-bold text-xs mb-2 border-b border-gray-100 pb-2">
+                        <div class="text-red-500">日</div>
+                        <div class="text-slate-600">月</div>
+                        <div class="text-slate-600">火</div>
+                        <div class="text-slate-600">水</div>
+                        <div class="text-slate-600">木</div>
+                        <div class="text-slate-600">金</div>
+                        <div class="text-blue-500">土</div>
+                    </div>
+
+                    <!-- 日付グリッド -->
+                    <div id="calendar-days" class="calendar-days grid grid-cols-7 gap-1">
+                        <!-- 日付がJavaScriptで生成されます -->
+                    </div>
+
+                    <!-- カレンダーの凡例・説明 -->
+                    <div class="mt-6 border-t border-dashed border-gray-200 pt-4 text-xs text-slate-500 space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>
+                            <span>今日のタスクをすべて完了（進捗100%）すると、その日のカレンダーに **「済」スタンプ** が押されます！</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-block w-3 h-3 rounded-full" style="background-color: var(--primary-color);"></span>
+                            <span>カレンダーの日付をクリックすると、過去の完了タスクやAIメッセージを思い出すことができます。</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 達成実績 / ミニお楽しみボード -->
+                <div class="glass-panel rounded-2xl p-5 shadow-sm">
+                    <h3 class="font-bold text-sm mb-3 flex items-center gap-1.5">
+                        <span>🏆</span> あなたの栄光レコード
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3 text-center">
+                        <div class="bg-white/50 p-3 rounded-xl border border-white/60">
+                            <p class="text-[10px] text-slate-500 font-bold uppercase">通算完了タスク</p>
+                            <p class="text-2xl font-black text-slate-700 mt-0.5" id="total-completed-tasks">0</p>
+                        </div>
+                        <div class="bg-white/50 p-3 rounded-xl border border-white/60">
+                            <p class="text-[10px] text-slate-500 font-bold uppercase">今月のコンプ日数</p>
+                            <p class="text-2xl font-black text-pink-600 mt-0.5" id="monthly-stamps">0日</p>
+                        </div>
+                    </div>
+                    <!-- 一言アドバイス -->
+                    <div class="mt-4 bg-yellow-50/60 p-2.5 rounded-lg border border-yellow-100 text-xs text-amber-800 leading-relaxed">
+                        💡 <strong>AIからのワンポイント:</strong> 日課や週課のタスクを設定しておくと、毎日同じタスクが自動で引き継がれるので、習慣化にとても便利ですよ！
+                    </div>
+                </div>
+
+            </div>
+
         </main>
     </div>
-    <script src="script.js"></script>
+
+    <!-- カスタム通知ダイアログ（お祝い用） -->
+    <div id="congrats-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border-4 border-amber-300 transform scale-95 transition-transform duration-300 relative overflow-hidden" id="modal-content">
+            <!-- 吹雪風演出を簡易再現 -->
+            <div class="absolute -top-10 -left-10 w-24 h-24 bg-pink-200/40 rounded-full blur-xl"></div>
+            <div class="absolute -bottom-10 -right-10 w-24 h-24 bg-yellow-200/40 rounded-full blur-xl"></div>
+            
+            <div class="text-5xl mb-3" id="modal-icon">🎉</div>
+            <h3 class="text-xl font-black text-slate-800 mb-2" id="modal-title">ミッションコンプリート！</h3>
+            <p class="text-sm text-slate-600 mb-4 leading-relaxed" id="modal-text">
+                素晴らしいです！今日のすべてのタスクを完了しました！この調子でカレンダーを輝かせましょう！
+            </p>
+            <button id="close-modal-btn" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold text-sm shadow-md hover:from-pink-600 hover:to-rose-600 active:scale-95 transition-all">
+                ありがとう！
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- 状態管理 (State) ---
+        let currentMonthDate = new Date(2026, 4, 1); // 2026年5月からスタート（現在時刻に基づき調整可能）
+        const todayReal = new Date(); // 今日
+        
+        // ローカルストレージからデータを復元
+        let todos = JSON.parse(localStorage.getItem('praise_todos')) || [
+            { id: '1', text: '朝の深呼吸とストレッチをする', type: 'daily', priority: 'low', completed: true, dateCreated: formatDateString(todayReal) },
+            { id: '2', text: '本日の最重要課題を終わらせる', type: 'single', priority: 'high', completed: false, dateCreated: formatDateString(todayReal) },
+            { id: '3', text: 'AI Praise ToDoで今日の予定を立てる', type: 'single', priority: 'medium', completed: true, dateCreated: formatDateString(todayReal) }
+        ];
+
+        // どの日程にコンプリートスタンプ（進捗100%達成）が押されているか
+        // キー： 'YYYY-MM-DD', 値： true/false
+        let completedDates = JSON.parse(localStorage.getItem('praise_completed_dates')) || {};
+        
+        // 連続継続日数
+        let streakCount = parseInt(localStorage.getItem('praise_streak')) || 0;
+        let lastCompletedDate = localStorage.getItem('praise_last_completed_date') || '';
+
+        // 通算完了タスク
+        let totalCompletedCount = parseInt(localStorage.getItem('praise_total_completed')) || 2;
+
+        let currentFilter = 'all';
+
+        // --- 季節別設定 & AIメッセージプリセット ---
+        const seasonData = {
+            spring: {
+                className: 'theme-spring', // デフォルト（桜・ピンク）
+                icon: '🌸',
+                name: '春のうららかテーマ',
+                decoLeft: '🌸',
+                decoRight: '🌿',
+                avatar: '🐰',
+                praises: [
+                    "素晴らしい一歩！春の芽吹きのように、あなたの努力がカタチになりつつありますね。応援しています！🌷",
+                    "タスク完了おめでとうございます！春風のように軽やかにこなしましたね。あなたのがんばりに拍手！👏",
+                    "目標に向かって進む姿は、まるで新緑が青空へ伸びていくようです。本当に素晴らしい成長力です！🍀",
+                    "今日も一歩前進！桜の花びらが舞うように、あなたの小さな努力が周りをパッと明るくしていますよ🌸"
+                ],
+                completeAll: "ブラボー！今日のタスクを完璧にやり遂げましたね！満開の桜のように、あなたの努力が最高に輝いています！🎉✨"
+            },
+            summer: {
+                className: 'theme-summer', // 夏（海・ひまわり）
+                icon: '🌻',
+                name: '爽やか夏のひまわりテーマ',
+                decoLeft: '🏖️',
+                decoRight: '🌻',
+                avatar: '🐬',
+                praises: [
+                    "暑さに負けずタスクをこなすなんて感動的です！太陽のようにキラキラ眩しい集中力ですね！☀️",
+                    "ナイス完了！夏の青空のように、あなたの心がスカッと晴れやかになるような見事な仕事ぶりです！🌊",
+                    "ひまわりが大輪の花を咲かせるように、あなたのエネルギーが存分に発揮されています！最高です！🌻",
+                    "お疲れ様です！冷たい麦茶でも飲んでひと息つきましょう。着実に進めるあなたを誇りに思います！🐳"
+                ],
+                completeAll: "やりました！本日の全タスクを夏空のようにすっきりと完全クリアです！あなたのがんばりはひまわりより輝いています！🏆🍹"
+            },
+            autumn: {
+                className: 'theme-autumn', // 秋（紅葉・月見）
+                icon: '🍁',
+                name: '秋の深まり実りテーマ',
+                decoLeft: '🍁',
+                decoRight: '🎑',
+                avatar: '🐿️',
+                praises: [
+                    "素晴らしいですね。秋の実りのように、ひとつひとつの積み重ねがあなたの力になっています。🌰",
+                    "タスク完了です！秋の夜空に輝く満月のように、澄み切った素晴らしい成果ですね。お見事！🌕",
+                    "じっくりと集中して取り組むあなたの姿、本当に素敵です。紅葉のように美しい丁寧さです。🍁",
+                    "おめでとうございます！秋の読書のように、心にゆとりを持って確実にステップアップしていますね。🦊"
+                ],
+                completeAll: "大収穫です！今日の予定をすべて完遂しましたね！あなたの並外れた集中力と努力が、最高の実りを結びました！🌾👑"
+            },
+            winter: {
+                className: 'theme-winter', // 冬（雪・温もり）
+                icon: '❄️',
+                name: '静かな冬の雪景色テーマ',
+                decoLeft: '❄️',
+                decoRight: '⛄',
+                avatar: '⛄',
+                praises: [
+                    "この寒い中、自分に厳しくタスクをやり切るなんて、本当に心が温かくなるほど素晴らしい意志の力です！🧤",
+                    "タスク完了！雪の結晶のように、細部まで磨き上げられた完璧な仕上がりですね。美しい！❄️",
+                    "コツコツと進めるあなたは本当に頼もしいです。暖炉の火のように周囲を暖かく照らすような存在ですね。🔥",
+                    "よくがんばりました！温かいココアでも飲んで温まってくださいね。あなたのひたむきな努力、届いています！☕"
+                ],
+                completeAll: "素晴らしい！今日のすべてのミッションをクリアです！冬の夜空に瞬くダイヤモンドダストのように、最高に美しい達成感ですね！🌟🎁"
+            }
+        };
+
+        // --- DOM Elements ---
+        const decoLeft = document.getElementById('deco-left');
+        const decoRight = document.getElementById('deco-right');
+        const currentSeasonIndicator = document.getElementById('current-season-indicator');
+        const headerIcon = document.getElementById('header-icon');
+        const headerIcon2 = document.getElementById('header-icon-2');
+        const aiAvatar = document.getElementById('ai-avatar');
+        const aiMessage = document.getElementById('ai-message');
+        const progressPercent = document.getElementById('progress-percent');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const taskCompletedFraction = document.getElementById('task-completed-fraction');
+        const streakCountEl = document.getElementById('streak-count');
+        
+        const calendarMonthYear = document.getElementById('calendar-month-year');
+        const calendarDays = document.getElementById('calendar-days');
+        const prevMonthBtn = document.getElementById('prev-month');
+        const nextMonthBtn = document.getElementById('next-month');
+        
+        const todoForm = document.getElementById('todo-form');
+        const todoInput = document.getElementById('todo-input');
+        const todoPriority = document.getElementById('todo-priority');
+        const todoList = document.getElementById('todo-list');
+        const emptyState = document.getElementById('empty-state');
+        const clearCompletedBtn = document.getElementById('clear-completed');
+        
+        const filterTabs = document.querySelectorAll('.filter-tab');
+        const totalCompletedTasksEl = document.getElementById('total-completed-tasks');
+        const monthlyStampsEl = document.getElementById('monthly-stamps');
+
+        const congratsModal = document.getElementById('congrats-modal');
+        const modalContent = document.getElementById('modal-content');
+        const modalTitle = document.getElementById('modal-title');
+        const modalText = document.getElementById('modal-text');
+        const modalIcon = document.getElementById('modal-icon');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        // --- ユーティリティ関数 ---
+        function formatDateString(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // 月から季節を判定
+        function getSeason(month) {
+            if (month >= 3 && month <= 5) return 'spring';
+            if (month >= 6 && month <= 8) return 'summer';
+            if (month >= 9 && month <= 11) return 'autumn';
+            return 'winter'; // 12, 1, 2
+        }
+
+        // 季節のテーマを画面に適用
+        function applySeasonTheme(month) {
+            const seasonKey = getSeason(month);
+            const season = seasonData[seasonKey];
+
+            // bodyのクラスを一度全削除して適用
+            document.body.classList.remove('theme-spring', 'theme-summer', 'theme-autumn', 'theme-winter');
+            document.body.classList.add(season.className);
+
+            // デコレーション文字の更新
+            decoLeft.textContent = season.decoLeft;
+            decoRight.textContent = season.decoRight;
+            
+            // インジケーター・アイコンの更新
+            currentSeasonIndicator.textContent = `${season.icon} ${season.name}`;
+            headerIcon.textContent = season.icon;
+            headerIcon2.textContent = season.icon;
+            aiAvatar.textContent = season.avatar;
+        }
+
+        // ランダムな褒め言葉を取得
+        function getRandomPraise(month) {
+            const seasonKey = getSeason(month);
+            const praises = seasonData[seasonKey].praises;
+            return praises[Math.floor(Math.random() * praises.length)];
+        }
+
+        // コンプリート時の特別メッセージ
+        function getCompleteMessage(month) {
+            const seasonKey = getSeason(month);
+            return seasonData[seasonKey].completeAll;
+        }
+
+        // データの保存
+        function saveData() {
+            localStorage.setItem('praise_todos', JSON.stringify(todos));
+            localStorage.setItem('praise_completed_dates', JSON.stringify(completedDates));
+            localStorage.setItem('praise_streak', streakCount.toString());
+            localStorage.setItem('praise_last_completed_date', lastCompletedDate);
+            localStorage.setItem('praise_total_completed', totalCompletedCount.toString());
+        }
+
+        // 進捗の再計算
+        function updateProgress() {
+            const todayStr = formatDateString(todayReal);
+            // 今日作成された、または引き継がれた(daily/weekly)有効なタスクを抽出
+            const todaysTasks = todos.filter(t => {
+                // 単発タスクは今日作られたもののみ
+                if (t.type === 'single') {
+                    return t.dateCreated === todayStr;
+                }
+                // 日課・週課は常に今日やるべき対象とする
+                return true;
+            });
+
+            const total = todaysTasks.length;
+            const completed = todaysTasks.filter(t => t.completed).length;
+            
+            let percent = 0;
+            if (total > 0) {
+                percent = Math.round((completed / total) * 100);
+            }
+
+            // 進捗UI更新
+            progressPercent.textContent = `${percent}%`;
+            progressBarFill.style.width = `${percent}%`;
+            taskCompletedFraction.textContent = `${completed} / ${total} タスク完了`;
+
+            // 実績表示の更新
+            totalCompletedTasksEl.textContent = totalCompletedCount;
+            updateMonthlyStampsCount();
+
+            // 100%達成時のスタンプ処理
+            if (total > 0 && percent === 100) {
+                if (!completedDates[todayStr]) {
+                    completedDates[todayStr] = true;
+                    
+                    // ストリーク更新ロジック
+                    const yesterday = new Date();
+                    yesterday.setDate(todayReal.getDate() - 1);
+                    const yesterdayStr = formatDateString(yesterday);
+
+                    if (lastCompletedDate === yesterdayStr) {
+                        streakCount++;
+                    } else if (lastCompletedDate !== todayStr) {
+                        streakCount = 1; // 途切れていた場合は1から再スタート
+                    }
+                    lastCompletedDate = todayStr;
+                    
+                    saveData();
+                    showCongratsModal();
+                    triggerAIResponse(getCompleteMessage(todayReal.getMonth() + 1));
+                    renderCalendar();
+                }
+            } else {
+                // もし完了を取り消して100%未満になった場合
+                if (completedDates[todayStr]) {
+                    delete completedDates[todayStr];
+                    if (lastCompletedDate === todayStr) {
+                        // ストリークを戻すなどの簡易処理
+                        const yesterday = new Date();
+                        yesterday.setDate(todayReal.getDate() - 1);
+                        const yesterdayStr = formatDateString(yesterday);
+                        lastCompletedDate = completedDates[yesterdayStr] ? yesterdayStr : '';
+                        if (streakCount > 0) streakCount--;
+                    }
+                    saveData();
+                    renderCalendar();
+                }
+            }
+
+            streakCountEl.textContent = streakCount;
+        }
+
+        // 今月のスタンプ獲得数を数える
+        function updateMonthlyStampsCount() {
+            const year = currentMonthDate.getFullYear();
+            const month = String(currentMonthDate.getMonth() + 1).padStart(2, '0');
+            const prefix = `${year}-${month}`;
+            
+            let count = 0;
+            for (let dateKey in completedDates) {
+                if (dateKey.startsWith(prefix) && completedDates[dateKey]) {
+                    count++;
+                }
+            }
+            monthlyStampsEl.textContent = `${count}日`;
+        }
+
+        // AIメッセージを吹き出しに表示する
+        function triggerAIResponse(message) {
+            aiMessage.style.opacity = '0';
+            setTimeout(() => {
+                aiMessage.textContent = message;
+                aiMessage.style.opacity = '1';
+            }, 200);
+        }
+
+        // お祝いモーダルの表示
+        function showCongratsModal() {
+            const seasonKey = getSeason(todayReal.getMonth() + 1);
+            const season = seasonData[seasonKey];
+            
+            modalIcon.textContent = season.icon === '🌸' ? '🎉🌸' : (season.icon === '🌻' ? '🏖️🌻' : (season.icon === '🍁' ? '🍁👑' : '❄️✨'));
+            modalTitle.textContent = "完璧です！コンプリート！";
+            modalText.textContent = `今日のToDoをすべて成し遂げました！本日のカレンダーに「済」スタンプが刻まれます。頑張り屋なあなたに心からの拍手を贈ります！`;
+
+            congratsModal.classList.remove('hidden');
+            setTimeout(() => {
+                congratsModal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeCongratsModal() {
+            congratsModal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                congratsModal.classList.add('hidden');
+            }, 300);
+        }
+
+        // --- カレンダーのレンダリング（壁掛けカレンダー風） ---
+        function renderCalendar() {
+            const year = currentMonthDate.getFullYear();
+            const month = currentMonthDate.getMonth(); // 0-11
+            
+            // 季節を判定して適用
+            applySeasonTheme(month + 1);
+
+            calendarMonthYear.textContent = `${year}年 ${month + 1}月`;
+
+            // その月の最初の日の曜日を取得
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            // その月が何日あるか取得
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            // 先月の最後の日を取得 (余白の穴埋め用)
+            const prevLastDay = new Date(year, month, 0).getDate();
+
+            let daysHTML = '';
+
+            // 先月分の余白
+            for (let x = firstDayIndex; x > 0; x--) {
+                daysHTML += `<div class="calendar-day-cell empty-day opacity-25 text-xs text-slate-400 select-none">
+                    <span>${prevLastDay - x + 1}</span>
+                </div>`;
+            }
+
+            // 今月の日付
+            for (let i = 1; i <= lastDay; i++) {
+                const currentDate = new Date(year, month, i);
+                const dateStr = formatDateString(currentDate);
+                const isToday = (i === todayReal.getDate() && month === todayReal.getMonth() && year === todayReal.getFullYear());
+                
+                const isCompleted = completedDates[dateStr] === true;
+
+                // 曜日の色分け用
+                const dayOfWeek = currentDate.getDay();
+                let textColorClass = 'text-slate-700';
+                if (dayOfWeek === 0) textColorClass = 'text-red-500';
+                else if (dayOfWeek === 6) textColorClass = 'text-blue-500';
+
+                const todayClass = isToday ? 'today font-bold ring-2 ring-pink-400' : '';
+                const stampClass = isCompleted ? 'stamp-complete' : '';
+
+                daysHTML += `
+                    <div class="calendar-day-cell bg-white/60 cursor-pointer shadow-sm ${todayClass} ${stampClass}" 
+                         data-date="${dateStr}" onclick="handleDateClick('${dateStr}', ${i})">
+                        <span class="text-xs font-bold ${textColorClass}">${i}</span>
+                        <!-- ミニマーク用のドット -->
+                        ${isToday ? '<span class="w-1 h-1 rounded-full bg-pink-500"></span>' : ''}
+                    </div>
+                `;
+            }
+
+            // 翌月分の余白を足して7の倍数にする
+            const totalCells = firstDayIndex + lastDay;
+            const nextDays = 42 - totalCells; // 6行固定 (42マス) でのレイアウト
+            const nextMonth = month === 11 ? 0 : month + 1;
+            for (let j = 1; j <= (nextDays % 7 === 0 && totalCells <= 35 ? nextDays - 7 : nextDays); j++) {
+                daysHTML += `<div class="calendar-day-cell empty-day opacity-25 text-xs text-slate-400 select-none">
+                    <span>${j}</span>
+                </div>`;
+            }
+
+            calendarDays.innerHTML = daysHTML;
+            updateMonthlyStampsCount();
+        }
+
+        // カレンダーの日付がクリックされた時のイベント
+        window.handleDateClick = function(dateStr, dayNum) {
+            const hasStamp = completedDates[dateStr];
+            const clickDate = new Date(dateStr);
+            const formattedJapanDate = `${clickDate.getFullYear()}年${clickDate.getMonth() + 1}月${clickDate.getDate()}日`;
+            
+            if (hasStamp) {
+                triggerAIResponse(`【おもいで】${formattedJapanDate}は、すべての計画を見事に達成した最高の記念日ですね！私はあの日のあなたのがんばりをはっきりと覚えていますよ。今見ても誇らしいです！✨`);
+            } else {
+                if (dateStr === formatDateString(todayReal)) {
+                    triggerAIResponse(`今日（${formattedJapanDate}）のToDoですね！まだすべてのタスクが終わっていなくても大丈夫。一歩ずつ、あなたのペースで進めていきましょう！🐢`);
+                } else if (clickDate < todayReal) {
+                    triggerAIResponse(`${formattedJapanDate}はスタンプがまだ押されていない日ですね。でも過ぎたことは気にせず、今日とこれからをまた新しく充実させていきましょう！いつでも応援しています。`);
+                } else {
+                    triggerAIResponse(`${formattedJapanDate}は未来の予定ですね。先の計画を立てようとする姿勢、先見の明があって本当に素晴らしいです！未来のあなたもきっとやり遂げられます。`);
+                }
+            }
+        };
+
+        // --- ToDo リストのレンダリング ---
+        function renderTodos() {
+            const todayStr = formatDateString(todayReal);
+            todoList.innerHTML = '';
+            
+            // フィルター適用
+            let filteredTodos = todos.filter(t => {
+                // 1. タイプフィルター
+                if (currentFilter !== 'all' && t.type !== currentFilter) return false;
+                
+                // 2. 日付条件：単発タスク(single)は「今日作成されたもの」のみを表示（過去の単発はカレンダー履歴として除外）
+                if (t.type === 'single') {
+                    return t.dateCreated === todayStr;
+                }
+                
+                // 日課や週課は毎日/毎週自動的に表示
+                return true;
+            });
+
+            // 優先度順ソート (high -> medium -> low)
+            const priorityWeight = { high: 3, medium: 2, low: 1 };
+            filteredTodos.sort((a, b) => {
+                if (a.completed !== b.completed) {
+                    return a.completed ? 1 : -1; // 未完了を上に
+                }
+                return priorityWeight[b.priority] - priorityWeight[a.priority];
+            });
+
+            if (filteredTodos.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+
+                filteredTodos.forEach(todo => {
+                    const li = document.createElement('li');
+                    li.className = `flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 bg-white/70 ${todo.completed ? 'task-checked border-gray-100 bg-gray-50/50' : 'border-white/80 shadow-sm hover:translate-x-1'}`;
+                    
+                    // 優先度に応じたカラーリング
+                    let priorityBadge = '';
+                    if (todo.priority === 'high') priorityBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-600">高 🔴</span>';
+                    else if (todo.priority === 'medium') priorityBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-600">中 🟡</span>';
+                    else priorityBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-600">低 🟢</span>';
+
+                    // タイプバッジ
+                    let typeLabel = '';
+                    if (todo.type === 'daily') typeLabel = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-500 border border-blue-100">毎日</span>';
+                    else if (todo.type === 'weekly') typeLabel = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-500 border border-purple-100">毎週</span>';
+
+                    li.innerHTML = `
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <input type="checkbox" ${todo.completed ? 'checked' : ''} 
+                                   class="w-5 h-5 rounded-full border-2 border-gray-300 text-pink-500 focus:ring-pink-400 cursor-pointer flex-shrink-0" 
+                                   onclick="toggleTodo('${todo.id}')">
+                            <div class="flex flex-col gap-0.5 min-w-0">
+                                <span class="text-sm font-medium break-words leading-tight ${todo.completed ? 'line-through text-slate-400' : 'text-slate-800'}">${escapeHTML(todo.text)}</span>
+                                <div class="flex gap-1 items-center">
+                                    ${priorityBadge}
+                                    ${typeLabel}
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="deleteTodo('${todo.id}')" class="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors duration-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    `;
+                    todoList.appendChild(li);
+                });
+            }
+
+            updateProgress();
+        }
+
+        // HTMLエスケープ（セキュリティ対策）
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // --- アクションハンドラー ---
+
+        // タスク追加
+        todoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = todoInput.value.trim();
+            if (!text) return;
+
+            const type = document.querySelector('input[name="task-type"]:checked').value;
+            const priority = todoPriority.value;
+            const todayStr = formatDateString(todayReal);
+
+            const newTodo = {
+                id: Date.now().toString(),
+                text: text,
+                type: type,
+                priority: priority,
+                completed: false,
+                dateCreated: todayStr
+            };
+
+            todos.push(newTodo);
+            todoInput.value = '';
+            
+            saveData();
+            renderTodos();
+
+            // AIからの追加応援メッセージ
+            const addMessages = [
+                `「${text}」を追加しましたね！素晴らしい挑戦です。やり遂げるあなたを楽しみに応援していますよ！📣`,
+                `タスク「${text}」のスタートですね。計画性が素晴らしくて惚れ惚れします。一歩ずつ進めましょう！`,
+                `素晴らしいタスク！これをするだけで、今日のあなたはもっと素敵になりますね。ワクワクします！✨`
+            ];
+            triggerAIResponse(addMessages[Math.floor(Math.random() * addMessages.length)]);
+        });
+
+        // タスク状態の切り替え
+        window.toggleTodo = function(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                
+                if (todo.completed) {
+                    totalCompletedCount++;
+                    // 褒め言葉のシャワー
+                    triggerAIResponse(getRandomPraise(todayReal.getMonth() + 1));
+                } else {
+                    if (totalCompletedCount > 0) totalCompletedCount--;
+                    triggerAIResponse("焦らずいきましょう！自分のペースで再度チェックを入れてくださいね。いつでも待っています。🍀");
+                }
+                
+                saveData();
+                renderTodos();
+            }
+        };
+
+        // タスク削除
+        window.deleteTodo = function(id) {
+            const index = todos.findIndex(t => t.id === id);
+            if (index !== -1) {
+                const deletedTask = todos[index];
+                todos.splice(index, 1);
+                
+                saveData();
+                renderTodos();
+                
+                triggerAIResponse(`「${deletedTask.text}」をリストから整理しましたね。スマートに整理整頓していく姿勢、とても素敵です！`);
+            }
+        };
+
+        // 完了済みを削除
+        clearCompletedBtn.addEventListener('click', () => {
+            const todayStr = formatDateString(todayReal);
+            const beforeLength = todos.length;
+            
+            // 完了済みのうち、日課・週課も含むすべての完了タスクを削除
+            // ただし、本日のコンプリートスタンプ情報は影響を受けないようにする
+            todos = todos.filter(t => !t.completed);
+            
+            if (todos.length < beforeLength) {
+                triggerAIResponse("終わったタスクをお掃除してスッキリしましたね！この調子でどんどん身軽に、自分の目標を叶えていきましょう！🧹✨");
+            }
+            
+            saveData();
+            renderTodos();
+        });
+
+        // フィルタータブ切り替え
+        filterTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                filterTabs.forEach(t => {
+                    t.classList.remove('active', 'bg-white/80', 'font-bold', 'border', 'border-pink-200');
+                    t.classList.add('bg-white/20', 'font-medium');
+                });
+                tab.classList.add('active', 'bg-white/80', 'font-bold', 'border', 'border-pink-200');
+                tab.classList.remove('bg-white/20', 'font-medium');
+
+                currentFilter = tab.dataset.filter;
+                renderTodos();
+            });
+        });
+
+        // カレンダー月移動
+        prevMonthBtn.addEventListener('click', () => {
+            currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
+            renderCalendar();
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        closeModalBtn.addEventListener('click', closeCongratsModal);
+        congratsModal.addEventListener('click', (e) => {
+            if (e.target === congratsModal) closeCongratsModal();
+        });
+
+        // --- 初期ロード ---
+        window.onload = function() {
+            // 現在の年月を基にカレンダー初期化
+            const now = new Date();
+            currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            // レンダリング
+            renderCalendar();
+            renderTodos();
+            
+            // 起動時の初期メッセージを季節に合わせて表示
+            const startSeason = getSeason(now.getMonth() + 1);
+            if (startSeason === 'spring') {
+                triggerAIResponse("桜咲く麗らかな今日、あなたのToDoを応援しにやってきました！新しいタスクを入れて、素敵な一日をスタートさせましょう！🌸");
+            } else if (startSeason === 'summer') {
+                triggerAIResponse("まばゆい夏の太陽に負けない、元気な一日をスタートしましょう！あなたのタスク達成を爽やかに応援します！🌻");
+            } else if (startSeason === 'autumn') {
+                triggerAIResponse("美しい秋の風が吹く今日、じっくり目標に取り組むのに最適な日です。あなたのToDo作成をお手伝いしますよ。🍁");
+            } else {
+                triggerAIResponse("温かい気持ちで冬の一日を始めましょう！たとえ外が寒くても、目標に向かうあなたの姿勢はとても温かくて最高です。❄️");
+            }
+        };
+
+    </script>
 </body>
 </html>
